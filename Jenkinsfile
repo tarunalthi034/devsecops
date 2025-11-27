@@ -36,13 +36,23 @@ pipeline {
             }
     	}
 	   stage('Kubernetes Deployment of ASG Bugg Web Application') {
-	   steps {
-	      withKubeConfig([credentialsId: 'kubelogin']) {
-		  sh('kubectl delete all --all -n devsecops')
-		  sh ('kubectl apply -f deployment.yaml --namespace=devsecops')
-		}
-	      }
-   	}
+            steps {
+                withAWS(credentials: 'aws-credentials', region: 'us-east-1') {
+
+      // Generate fresh kubeconfig that contains a valid IAM token
+            sh '''
+              aws eks update-kubeconfig \
+                --name kubernetes-cluster \
+                --region us-east-1
+            '''
+
+            sh 'kubectl get nodes'
+            sh 'kubectl delete all --all -n devsecops || true'
+            sh 'kubectl apply -f deployment.yaml --namespace=devsecops'
+    }
+  }
+}
+
 	   
 	stage ('wait_for_testing'){
 	   steps {
